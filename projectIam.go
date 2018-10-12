@@ -29,6 +29,7 @@ type IAMPolicy struct {
 
 func doProjectIam() {
 	client, err := google.DefaultClient(oauth2.NoContext)
+	_ = client
 	if err != nil {
 		log.Fatalf("Couldn't create google client: %v", err)
 	}
