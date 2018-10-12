@@ -49,23 +49,25 @@ func doProjectIam() {
 
 func getProjectID() string {
 	// log.Printf("here i am")
-	// cmd := exec.Command("gcloud", "config", "list", "--format", "yaml")
-	cmd := exec.Command("gcloud", "config", "get-value", "project")
+	// cmd := exec.Command("gcloud", "config", "list", "--format", "value")
+	cmd := exec.Command("gcloud", "config", "list", "--format", "yaml")
+	// cmd := exec.Command("gcloud", "config", "get-value", "project")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		// log.Fatalf("cmd.Run() failed with %s\n", err)
 	}
-	fmt.Printf("%s\n", string(out))
-	// c := conf{}
-	// err = yaml.Unmarshal(out, &c)
-	// // fmt.Printf("--- m:\n%v\n\n", c)
-	// // fmt.Printf("yo" + c.Core.Project)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
+	// fmt.Printf("%s\n", string(out))
+	c := conf{}
+	err = yaml.Unmarshal(out, &c)
+	// fmt.Printf("--- m:\n%v\n\n", c)
+	// fmt.Printf("yo" + c.Core.Project)
+	if err != nil {
+		log.Fatal(err)
+	}
 	// log.Printf("%s", out)
+	// fmt.Println(c.Core.Project)
 
-	return strings.TrimSpace(string(out))
+	return c.Core.Project
 }
 
 func getHeirachy(client *http.Client, projectID string) []string {
