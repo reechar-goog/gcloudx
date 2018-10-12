@@ -28,15 +28,15 @@ type IAMPolicy struct {
 }
 
 func doProjectIam() {
-	client, err := google.DefaultClient(oauth2.NoContext)
+	client, err := google.DefaultClient(oauth2.NoContext, "https://www.googleapis.com/auth/cloud-platform")
 	_ = client
 	if err != nil {
 		log.Fatalf("Couldn't create google client: %v", err)
 	}
 	var projectID = getProjectID()
 	_ = projectID
-	// results := getHeirachy(client, projectID)
-	// log.Println(results)
+	results := getHeirachy(client, projectID)
+	log.Println(results)
 
 	fmt.Println(getProjectID())
 
