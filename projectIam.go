@@ -72,6 +72,9 @@ func getHeirachy(client *http.Client, projectID string) []string {
 	var results []string
 	results = append(results, projectID)
 	projectsService, err := crmv1.New(client)
+	if err != nil {
+		log.Fatalf("Unable to create Project service: %v", err)
+	}
 	foldersService, err := crmv2.New(client)
 	if err != nil {
 		log.Fatalf("Unable to create Resource Manager service: %v", err)
@@ -79,6 +82,7 @@ func getHeirachy(client *http.Client, projectID string) []string {
 
 	proj, err := projectsService.Projects.Get(projectID).Do()
 	if err != nil {
+		log.Printf("tried to lookup: %v", projectID)
 		log.Fatalf("Unable to get project: %v", err)
 	}
 	var gipr = new(crmv1.GetIamPolicyRequest)
