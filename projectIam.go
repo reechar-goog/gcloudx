@@ -34,8 +34,8 @@ func doProjectIam() {
 	}
 	var projectID = getProjectID()
 	_ = projectID
-	results := getHeirachy(client, projectID)
-	log.Println(results)
+	// results := getHeirachy(client, projectID)
+	// log.Println(results)
 
 	fmt.Println(getProjectID())
 
