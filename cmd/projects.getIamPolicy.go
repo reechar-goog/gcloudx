@@ -1,20 +1,42 @@
-package main
+package cmd
 
 import (
 	"fmt"
+	utils "gcloudx/utilities"
 	"log"
 	"net/http"
 	"os/exec"
 	"strings"
 
-	yaml "github.com/ghodss/yaml"
-
 	mapset "github.com/deckarep/golang-set"
+	yaml "github.com/ghodss/yaml"
+	"github.com/spf13/cobra"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	crmv1 "google.golang.org/api/cloudresourcemanager/v1beta1"
 	crmv2 "google.golang.org/api/cloudresourcemanager/v2beta1"
+	iam "google.golang.org/api/iam/v1"
 )
+
+// getIamPolicyCmd represents the getIamPolicy command
+var getIamPolicyCmd = &cobra.Command{
+	Use:              "get-iam-policy",
+	TraverseChildren: false,
+	Short:            "A brief description of your command",
+	Long: `A longer description that spans multiple lines and likely contains examples
+and usage of using your command. For example:
+
+Cobra is a CLI library for Go that empowers applications.
+This application is a tool to generate the needed files
+to quickly create a Cobra application.`,
+	Run: func(cmd *cobra.Command, args []string) {
+		doProjectIam()
+	},
+}
+
+func init() {
+	projectsCmd.AddCommand(getIamPolicyCmd)
+}
 
 type conf struct {
 	Core struct {
@@ -24,55 +46,71 @@ type conf struct {
 	}
 }
 
-type IAMPolicy struct {
+func getRoles(policy *crmv1.Policy) []string {
+	roles := make([]string, 0)
+	for _, binding := range policy.Bindings {
+		roles = append(roles, binding.Role)
+	}
+	return roles
 }
 
 func doProjectIam() {
-	client, err := google.DefaultClient(oauth2.NoContext, "https://www.googleapis.com/auth/cloud-platform")
-	_ = client
+
+	client, err := google.DefaultClient(oauth2.NoContext, iam.CloudPlatformScope)
 	if err != nil {
 		log.Fatalf("Couldn't create google client: %v", err)
 	}
+
 	var projectID = getProjectID()
-	_ = projectID
 	results := getHeirachy(client, projectID)
-	log.Println(results)
 
-	fmt.Println(getProjectID())
+	if *roles != "" {
+		roleFilter := strings.Split(*roles, ",")
+		results = filterPolicy(results, roleFilter)
+	}
 
-	// svc, err := iam.New(client)
-	// pol, err := svc.Projects.ServiceAccounts.GetIamPolicy("projects/p-reech-api-tf9/serviceAccounts/p-reech-api-tf9@appspot.gserviceaccount.com").Do()
-	// pjson, err := pol.MarshalJSON()
-	// log.Println("SA JSON")
-	// log.Println(string(pjson))
+	if *permission != "" {
+		roles := getRoles(results)
+		roleFilter := utils.FilterRolesByPermission(roles, *permission)
+		results = filterPolicy(results, roleFilter)
+	}
+
+	resultsJSON, err := results.MarshalJSON()
+	resultsYaml, err := yaml.JSONToYAML(resultsJSON)
+	fmt.Println(string(resultsYaml))
 }
 
 func getProjectID() string {
-	// log.Printf("here i am")
-	// cmd := exec.Command("gcloud", "config", "list", "--format", "value")
 	cmd := exec.Command("gcloud", "config", "list", "--format", "yaml")
-	// cmd := exec.Command("gcloud", "config", "get-value", "project")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		// log.Fatalf("cmd.Run() failed with %s\n", err)
+		log.Fatalf("cmd.Run() failed with %s\n", err)
 	}
-	// fmt.Printf("%s\n", string(out))
 	c := conf{}
 	err = yaml.Unmarshal(out, &c)
-	// fmt.Printf("--- m:\n%v\n\n", c)
-	// fmt.Printf("yo" + c.Core.Project)
 	if err != nil {
 		log.Fatal(err)
 	}
-	// log.Printf("%s", out)
-	// fmt.Println(c.Core.Project)
-
 	return c.Core.Project
 }
+func filterPolicy(policy *crmv1.Policy, roleFilter []string) *crmv1.Policy {
+	filteredPolicy := new(crmv1.Policy)
+	filteredBindings := make([]*crmv1.Binding, 0)
 
-func getHeirachy(client *http.Client, projectID string) []string {
-	var results []string
-	results = append(results, projectID)
+	for _, binding := range policy.Bindings {
+		if utils.StringInSlice(binding.Role, roleFilter) {
+			filteredBindings = append(filteredBindings, binding)
+		}
+	}
+
+	filteredPolicy.Bindings = filteredBindings
+
+	return filteredPolicy
+}
+
+func getHeirachy(client *http.Client, projectID string) *crmv1.Policy {
+
+	var resultsPolicy *crmv1.Policy
 	projectsService, err := crmv1.New(client)
 	if err != nil {
 		log.Fatalf("Unable to create Project service: %v", err)
@@ -84,27 +122,29 @@ func getHeirachy(client *http.Client, projectID string) []string {
 
 	proj, err := projectsService.Projects.Get(projectID).Do()
 	if err != nil {
-		log.Printf("tried to lookup: %v", projectID)
 		log.Fatalf("Unable to get project: %v", err)
 	}
 	var gipr = new(crmv1.GetIamPolicyRequest)
 	policy, err := projectsService.Projects.GetIamPolicy(projectID, gipr).Do()
-	policyJSON, err := policy.MarshalJSON()
-	policyYAML, err := yaml.JSONToYAML(policyJSON)
-	log.Println(string(policyYAML))
+	// policyJSON, err := policy.MarshalJSON()
+	// policyYAML, err := yaml.JSONToYAML(policyJSON)
+	// _ = policyYAML
+	// log.Println("Project: ")
+	// log.Println(string(policyYAML))
 
 	var ptype = proj.Parent.Type
 	if ptype == "folder" {
 		var parentID = "folders/" + proj.Parent.Id
 		folder, err := foldersService.Folders.Get(parentID).Do()
 		fpo, err := foldersService.Folders.GetIamPolicy(parentID, new(crmv2.GetIamPolicyRequest)).Do()
-		log.Println("FODLER POLICY")
-		fpojson, err := fpo.MarshalJSON()
-		log.Println(string(fpojson))
+		_ = fpo
+		// log.Println("FODLER POLICY")
+		// fpojson, err := fpo.MarshalJSON()
+		// log.Println(string(fpojson))
 		if err != nil {
 			log.Fatalf("can't get")
 		}
-		results = append(results, parentID)
+		// results = append(results, parentID)
 		var currentParent = folder.Parent
 		// fik
 		for strings.HasPrefix(currentParent, "folder") {
@@ -112,121 +152,96 @@ func getHeirachy(client *http.Client, projectID string) []string {
 			if err != nil {
 				log.Fatalf("can't get")
 			}
-			results = append(results, currentParent)
+			// results = append(results, currentParent)
 			currentParent = nextParent.Parent
 		}
-		results = append(results, currentParent)
+		// results = append(results, currentParent)
 		policy2, err := projectsService.Organizations.GetIamPolicy(currentParent, gipr).Do()
 		if err != nil {
 			log.Fatalln("COULDn'T GET POLICYs")
 		}
 		policyJSON2, err := policy2.MarshalJSON()
-		log.Println("ORG POLICY:")
+		// log.Println("ORG POLICY:")
 		log.Println(string(policyJSON2))
 
 	} else if ptype == "organization" {
 		var parentID = "organizations/" + proj.Parent.Id
-		results = append(results, parentID)
+		// results = append(results, parentID)
 		policy2, err := projectsService.Organizations.GetIamPolicy(parentID, gipr).Do()
 		if err != nil {
 			log.Fatalln("COULDn'T GET POLICYs")
 		}
 		// crmv1.Policy.Bindings[0].
-		policyJSON2, err := policy2.MarshalJSON()
-		policyYAML2, err := yaml.JSONToYAML(policyJSON2)
+		// policyJSON2, err := policy2.MarshalJSON()
+		// policyYAML2, err := yaml.JSONToYAML(policyJSON2)
 
-		log.Println("ORG POLICY:")
-		log.Println(string(policyYAML2))
-		pol := mergePolicy(policy, policy2)
-		_ = pol
-		policyJSON3, err := pol.MarshalJSON()
-		policyYAML3, err := yaml.JSONToYAML(policyJSON3)
-		log.Println("MERGED")
-		log.Println(string(policyYAML3))
+		// log.Println("ORG POLICY:")
+		// log.Println(string(policyYAML2))
+		mergedPolicy := mergePolicy(policy, policy2)
+		resultsPolicy = mergedPolicy
+
+		// policyJSON3, err := mergedPolicy.MarshalJSON()
+		// policyYAML3, err := yaml.JSONToYAML(policyJSON3)
+		// log.Println("MERGED")
+		// fmt.Println(string(policyYAML3))
 	}
 
-	return results
+	return resultsPolicy
 }
 
 func mergePolicy(policy1, policy2 *crmv1.Policy) *crmv1.Policy {
 	//  var mergedPolicy crmv1.olicy
 	roleMap := make(map[string]crmv1.Binding)
 
-	pol1bindings := mapset.NewSet()
+	policy1Bindings := mapset.NewSet()
 	for _, binding := range policy1.Bindings {
-		pol1bindings.Add(binding.Role)
+		policy1Bindings.Add(binding.Role)
 	}
-	fmt.Println("Policy 1 roles:")
-	fmt.Println(pol1bindings)
 
-	pol2bindings := mapset.NewSet()
+	policy2Bindings := mapset.NewSet()
 	for _, binding := range policy2.Bindings {
-		pol2bindings.Add(binding.Role)
-	}
-	fmt.Println("Policy 2 roles:")
-	fmt.Println(pol2bindings)
-
-	polinter := pol1bindings.Intersect(pol2bindings)
-	fmt.Println("Intersection")
-	fmt.Println(polinter)
-
-	for _, binding := range policy1.Bindings {
-		roleMap[binding.Role] = *binding
+		policy2Bindings.Add(binding.Role)
 	}
 
-	// pol1bindings.
-
-	// log.Println("whatsup")
-	// // log.Println(roleMap)
-	// for k, v := range roleMap {
-	// 	bindingTest := new(crmv1.Binding)
-	// 	bindingTest.Role = k
-	// 	bindingTestMembers := append(v.Members, "TESTEROOO")
-	// 	bindingTest.Members = bindingTestMembers
-	// 	roleMap[k] = (*bindingTest)
-	// }
-	// for k, v := range roleMap {
-	// 	fmt.Printf("key[%s] value[%s]\n", k, v.Members)
-	// }
+	policyIntersection := policy1Bindings.Intersect(policy2Bindings)
 
 	mergedPolicy := new(crmv1.Policy)
 	mergedPolicyBindings := make([]*crmv1.Binding, 0)
 
 	for _, binding := range policy1.Bindings {
-		if !polinter.Contains(binding.Role) {
+		if !policyIntersection.Contains(binding.Role) {
 			mergedPolicyBindings = append(mergedPolicyBindings, binding)
+		} else {
+			roleMap[binding.Role] = *binding
 		}
 	}
 
 	for _, binding := range policy2.Bindings {
-		if !polinter.Contains(binding.Role) {
+		if !policyIntersection.Contains(binding.Role) {
 			mergedPolicyBindings = append(mergedPolicyBindings, binding)
 		} else {
+			// log.Printf("merging role: %s", binding.Role)
 			mergedBinding := new(crmv1.Binding)
 			mergedBinding.Role = binding.Role
-			// s0 := []interface{} binding.Members
 			polset := mapset.NewSet()
 			for _, v := range binding.Members {
+				// log.Printf("adding %s from pol1", v)
 				polset.Add(v)
 			}
-			for _, v := range binding.Members {
+			for _, v := range roleMap[binding.Role].Members {
+				// log.Printf("adding %s from pol2", v)
 				polset.Add(v)
 			}
-			// pol1Set := mapset.NewSetFromSlice(binding.Members.([]interface{}))
-			// pol2Set := mapset.NewSet(roleMap[binding.Role].Members)
-			// pol3 := pol1Set.Union(pol2Set)
 			slicer := polset.ToSlice()
 			stringers := make([]string, len(slicer))
 			for i, v := range slicer {
 				stringers[i] = v.(string)
 			}
 			mergedBinding.Members = stringers
-			// mergedBinding.Members = (pol1Set.Union(pol2Set)).ToSlice()
 			mergedPolicyBindings = append(mergedPolicyBindings, mergedBinding)
 		}
 	}
 
-	// newBinding := append(policy1.Bindings, bindingTest)
 	mergedPolicy.Bindings = mergedPolicyBindings
 	return mergedPolicy
 }
