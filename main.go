@@ -1,7 +1,7 @@
 package main
 
 import (
-	"gcloudx/cmd"
+	"github.com/reechar-goog/gcloudx/cmd"
 
 	"github.com/spf13/pflag"
 )

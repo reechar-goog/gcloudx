@@ -2,11 +2,10 @@ package cmd
 
 import (
 	"fmt"
-	utils "gcloudx/utilities"
 	"log"
-	"net/http"
-	"os/exec"
 	"strings"
+
+	utils "github.com/reechar-goog/gcloudx/utilities"
 
 	mapset "github.com/deckarep/golang-set"
 	yaml "github.com/ghodss/yaml"
@@ -38,14 +37,6 @@ func init() {
 	projectsCmd.AddCommand(getIamPolicyCmd)
 }
 
-type conf struct {
-	Core struct {
-		// Account string `yaml:"account"`
-		// DUR     string `yaml:"disable_usage_reporting"`
-		Project string `yaml:"project"`
-	}
-}
-
 func getRoles(policy *crmv1.Policy) []string {
 	roles := make([]string, 0)
 	for _, binding := range policy.Bindings {
@@ -55,14 +46,8 @@ func getRoles(policy *crmv1.Policy) []string {
 }
 
 func doProjectIam() {
-
-	client, err := google.DefaultClient(oauth2.NoContext, iam.CloudPlatformScope)
-	if err != nil {
-		log.Fatalf("Couldn't create google client: %v", err)
-	}
-
-	var projectID = getProjectID()
-	results := getHeirachy(client, projectID)
+	var projectID = utils.GetProjectID()
+	results := getFullyInheritedPolicy(projectID)
 
 	if *roles != "" {
 		roleFilter := strings.Split(*roles, ",")
@@ -76,23 +61,16 @@ func doProjectIam() {
 	}
 
 	resultsJSON, err := results.MarshalJSON()
+	if err != nil {
+		log.Fatalf("Could not parse json: %v", err)
+	}
 	resultsYaml, err := yaml.JSONToYAML(resultsJSON)
+	if err != nil {
+		log.Fatalf("Could not prase yaml: %v", err)
+	}
 	fmt.Println(string(resultsYaml))
 }
 
-func getProjectID() string {
-	cmd := exec.Command("gcloud", "config", "list", "--format", "yaml")
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		log.Fatalf("cmd.Run() failed with %s\n", err)
-	}
-	c := conf{}
-	err = yaml.Unmarshal(out, &c)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return c.Core.Project
-}
 func filterPolicy(policy *crmv1.Policy, roleFilter []string) *crmv1.Policy {
 	filteredPolicy := new(crmv1.Policy)
 	filteredBindings := make([]*crmv1.Binding, 0)
@@ -108,9 +86,14 @@ func filterPolicy(policy *crmv1.Policy, roleFilter []string) *crmv1.Policy {
 	return filteredPolicy
 }
 
-func getHeirachy(client *http.Client, projectID string) *crmv1.Policy {
+func getFullyInheritedPolicy(projectID string) *crmv1.Policy {
+	client, err := google.DefaultClient(oauth2.NoContext, iam.CloudPlatformScope)
+	if err != nil {
+		log.Fatalf("Couldn't create google client: %v", err)
+	}
 
 	var resultsPolicy *crmv1.Policy
+
 	projectsService, err := crmv1.New(client)
 	if err != nil {
 		log.Fatalf("Unable to create Project service: %v", err)
@@ -125,7 +108,9 @@ func getHeirachy(client *http.Client, projectID string) *crmv1.Policy {
 		log.Fatalf("Unable to get project: %v", err)
 	}
 	var gipr = new(crmv1.GetIamPolicyRequest)
-	policy, err := projectsService.Projects.GetIamPolicy(projectID, gipr).Do()
+	projectPolicy, err := projectsService.Projects.GetIamPolicy(projectID, gipr).Do()
+	resultsPolicy = projectPolicy
+	// _ = policy
 	// policyJSON, err := policy.MarshalJSON()
 	// policyYAML, err := yaml.JSONToYAML(policyJSON)
 	// _ = policyYAML
@@ -136,11 +121,12 @@ func getHeirachy(client *http.Client, projectID string) *crmv1.Policy {
 	if ptype == "folder" {
 		var parentID = "folders/" + proj.Parent.Id
 		folder, err := foldersService.Folders.Get(parentID).Do()
-		fpo, err := foldersService.Folders.GetIamPolicy(parentID, new(crmv2.GetIamPolicyRequest)).Do()
-		_ = fpo
+		folderPolicy, err := foldersService.Folders.GetIamPolicy(parentID, new(crmv2.GetIamPolicyRequest)).Do()
+		resultsPolicy = mergePolicy(resultsPolicy, utils.ConvertStructV2toV1(folderPolicy))
+		// _ = fpo
 		// log.Println("FODLER POLICY")
 		// fpojson, err := fpo.MarshalJSON()
-		// log.Println(string(fpojson))
+		// log.Println(string(fpojson)) q
 		if err != nil {
 			log.Fatalf("can't get")
 		}
@@ -152,39 +138,45 @@ func getHeirachy(client *http.Client, projectID string) *crmv1.Policy {
 			if err != nil {
 				log.Fatalf("can't get")
 			}
+			folderPolicy, err := foldersService.Folders.GetIamPolicy(nextParent.Name, new(crmv2.GetIamPolicyRequest)).Do()
+			resultsPolicy = mergePolicy(resultsPolicy, utils.ConvertStructV2toV1(folderPolicy))
 			// results = append(results, currentParent)
 			currentParent = nextParent.Parent
 		}
 		// results = append(results, currentParent)
-		policy2, err := projectsService.Organizations.GetIamPolicy(currentParent, gipr).Do()
-		if err != nil {
-			log.Fatalln("COULDn'T GET POLICYs")
-		}
-		policyJSON2, err := policy2.MarshalJSON()
-		// log.Println("ORG POLICY:")
-		log.Println(string(policyJSON2))
-
-	} else if ptype == "organization" {
-		var parentID = "organizations/" + proj.Parent.Id
-		// results = append(results, parentID)
-		policy2, err := projectsService.Organizations.GetIamPolicy(parentID, gipr).Do()
-		if err != nil {
-			log.Fatalln("COULDn'T GET POLICYs")
-		}
-		// crmv1.Policy.Bindings[0].
+		// policy2, err := projectsService.Organizations.GetIamPolicy(currentParent, gipr).Do()
+		// if err != nil {
+		// 	log.Fatalln("COULDn'T GET POLICYs")
+		// }
 		// policyJSON2, err := policy2.MarshalJSON()
-		// policyYAML2, err := yaml.JSONToYAML(policyJSON2)
-
 		// log.Println("ORG POLICY:")
-		// log.Println(string(policyYAML2))
-		mergedPolicy := mergePolicy(policy, policy2)
-		resultsPolicy = mergedPolicy
+		// log.Println(string(policyJSON2))
 
-		// policyJSON3, err := mergedPolicy.MarshalJSON()
-		// policyYAML3, err := yaml.JSONToYAML(policyJSON3)
-		// log.Println("MERGED")
-		// fmt.Println(string(policyYAML3))
 	}
+
+	// else if ptype == "organization" {
+	var parentID = "organizations/" + proj.Parent.Id
+	// results = append(results, parentID)
+	orgPolicy, err := projectsService.Organizations.GetIamPolicy(parentID, gipr).Do()
+	// _ = policy2
+	if err != nil {
+		log.Fatalln("COULDn'T GET POLICYs")
+	}
+	// crmv1.Policy.Bindings[0].
+	// policyJSON2, err := policy2.MarshalJSON()
+	// policyYAML2, err := yaml.JSONToYAML(policyJSON2)
+
+	// log.Println("ORG POLICY:")
+	// log.Println(string(policyYAML2))
+
+	// policyJSON3, err := mergedPolicy.MarshalJSON()
+	// policyYAML3, err := yaml.JSONToYAML(policyJSON3)
+	// log.Println("MERGED")
+	// fmt.Println(string(policyYAML3))
+	// }
+
+	resultsPolicy = mergePolicy(resultsPolicy, orgPolicy)
+	// resultsPolicy = mergedPolicy
 
 	return resultsPolicy
 }

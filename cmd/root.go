@@ -16,7 +16,6 @@ package cmd
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"os/exec"
 
@@ -59,7 +58,7 @@ func containsOverride(args []string, currCommand *cobra.Command) bool {
 	}
 	top, currargs := args[0], args[1:]
 	if currCommand.TraverseChildren != true {
-		log.Printf("found sub %s", currCommand.Use)
+		// log.Printf("found sub %s", currCommand.Use)
 		return true
 	}
 	for _, command := range currCommand.Commands() {
