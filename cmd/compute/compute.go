@@ -15,8 +15,6 @@
 package compute
 
 import (
-	"fmt"
-
 	gcloudx "github.com/reechar-goog/gcloudx/cmd"
 	"github.com/spf13/cobra"
 )
@@ -32,8 +30,8 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		// gcloudx.DoNormalGcloud()
-		fmt.Println("HEY COMPUTe")
+		gcloudx.DoNormalGcloud()
+		// fmt.Println("HEY COMPUTe")
 	},
 }
 
