@@ -73,8 +73,8 @@ func doSaIam() {
 	}
 
 	if *gcloudx.Permission != "" {
-		roles := getRoles(results)
-		roleFilter := utils.FilterRolesByPermission(roles, *permission)
+		roles := utils.GetRolesFromPolicy(results)
+		roleFilter := utils.FilterRolesByPermission(roles, *gcloudx.Permission)
 		results = utils.FilterPolicyByRole(results, roleFilter)
 	}
 

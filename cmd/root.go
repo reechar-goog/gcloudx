@@ -27,6 +27,7 @@ import (
 
 var Roles = pflag.String("roles", "", "get a list of roles")
 var Permission = pflag.String("permission", "", "filters by permission")
+var Project = pflag.String("project", "", "projectId to run command on")
 
 //DoNormalGcloud does normal gcloud stuff
 func DoNormalGcloud() {

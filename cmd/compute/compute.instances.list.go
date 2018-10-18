@@ -21,7 +21,7 @@ import (
 )
 
 var computeInstancesListCmd = &cobra.Command{
-	Use:              "list",
+	Use:              "liste",
 	TraverseChildren: false,
 	Short:            "A brief description of your command",
 	Long: `A longer description that spans multiple lines and likely contains examples

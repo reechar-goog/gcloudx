@@ -38,3 +38,8 @@ to quickly create a Cobra application.`,
 func init() {
 	gcloudx.RootCmd.AddCommand(projectsCmd)
 }
+
+//Load to force init
+func Load() {
+
+}
