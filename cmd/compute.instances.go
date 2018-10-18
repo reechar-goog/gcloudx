@@ -18,9 +18,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// projectsCmd represents the projects command
-var projectsCmd = &cobra.Command{
-	Use:              "projects",
+var computeInstancesCmd = &cobra.Command{
+	Use:              "instances",
 	TraverseChildren: true,
 	Short:            "A brief description of your command",
 	Long: `A longer description that spans multiple lines and likely contains examples
@@ -35,5 +34,5 @@ to quickly create a Cobra application.`,
 }
 
 func init() {
-	rootCmd.AddCommand(projectsCmd)
+	computeCmd.AddCommand(computeInstancesCmd)
 }

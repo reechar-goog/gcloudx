@@ -25,7 +25,11 @@ import (
 	"github.com/spf13/viper"
 )
 
-func doNormal() {
+var roles = pflag.String("roles", "", "get a list of roles")
+var permission = pflag.String("permission", "", "filters by permission")
+
+//DoNormalGcloud does normal gcloud stuff
+func DoNormalGcloud() {
 	cmd := exec.Command("gcloud", pflag.Args()...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
@@ -38,9 +42,9 @@ var cfgFile string
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:              "cobragcloud",
+	Use:              "gcloudx",
 	TraverseChildren: true,
-	Short:            "A brief description of your application",
+	Short:            "Gcloud Xtended",
 	Long: `A longer description that spans multiple lines and likely contains
 examples and usage of using your application. For example:
 
@@ -79,7 +83,7 @@ func Execute() {
 			os.Exit(1)
 		}
 	} else {
-		doNormal()
+		DoNormalGcloud()
 	}
 
 	// // for _, command := range rootCmd.Commands {
@@ -95,7 +99,7 @@ func Execute() {
 
 func init() {
 	cobra.OnInitialize(initConfig)
-
+	viper.BindPFlags(pflag.CommandLine)
 	// Here you will define your flags and configuration settings.
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
