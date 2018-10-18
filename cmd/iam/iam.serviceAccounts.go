@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cmd
+package iam
 
 import (
 	"github.com/spf13/cobra"
 )
 
-var computeCmd = &cobra.Command{
-	Use:              "compute",
+var saCmd = &cobra.Command{
+	Use:              "service-accounts",
 	TraverseChildren: true,
 	Short:            "A brief description of your command",
 	Long: `A longer description that spans multiple lines and likely contains examples
@@ -34,5 +34,5 @@ to quickly create a Cobra application.`,
 }
 
 func init() {
-	rootCmd.AddCommand(computeCmd)
+	iamCmd.AddCommand(saCmd)
 }

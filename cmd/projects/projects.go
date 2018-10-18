@@ -15,11 +15,13 @@
 package cmd
 
 import (
+	gcloudx "github.com/reechar-goog/gcloudx/cmd"
 	"github.com/spf13/cobra"
 )
 
-var iamCmd = &cobra.Command{
-	Use:              "iam",
+// projectsCmd represents the projects command
+var projectsCmd = &cobra.Command{
+	Use:              "projects",
 	TraverseChildren: true,
 	Short:            "A brief description of your command",
 	Long: `A longer description that spans multiple lines and likely contains examples
@@ -29,10 +31,10 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		DoNormalGcloud()
+		gcloudx.DoNormalGcloud()
 	},
 }
 
 func init() {
-	rootCmd.AddCommand(iamCmd)
+	gcloudx.RootCmd.AddCommand(projectsCmd)
 }

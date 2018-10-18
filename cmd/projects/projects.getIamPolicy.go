@@ -6,9 +6,9 @@ import (
 	"os/exec"
 	"strings"
 
-	utils "github.com/reechar-goog/gcloudx/utilities"
-
 	yaml "github.com/ghodss/yaml"
+	gcloudx "github.com/reechar-goog/gcloudx/cmd"
+	utils "github.com/reechar-goog/gcloudx/utilities"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	crmv1 "google.golang.org/api/cloudresourcemanager/v1beta1"
@@ -33,14 +33,14 @@ func doProjectIam() {
 	var projectID = getProjectID()
 	results := utils.GetFullyInheritedPolicy(projectID)
 
-	if *roles != "" {
-		roleFilter := strings.Split(*roles, ",")
+	if *gcloudx.Roles != "" {
+		roleFilter := strings.Split(*gcloudx.Roles, ",")
 		results = utils.FilterPolicyByRole(results, roleFilter)
 	}
 
-	if *permission != "" {
-		roles := getRoles(results)
-		roleFilter := utils.FilterRolesByPermission(roles, *permission)
+	if *gcloudx.Permission != "" {
+		roles := utils.GetRolesFromPolicy(results)
+		roleFilter := utils.FilterRolesByPermission(roles, *gcloudx.Permission)
 		results = utils.FilterPolicyByRole(results, roleFilter)
 	}
 

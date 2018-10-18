@@ -25,8 +25,8 @@ import (
 	"github.com/spf13/viper"
 )
 
-var roles = pflag.String("roles", "", "get a list of roles")
-var permission = pflag.String("permission", "", "filters by permission")
+var Roles = pflag.String("roles", "", "get a list of roles")
+var Permission = pflag.String("permission", "", "filters by permission")
 
 //DoNormalGcloud does normal gcloud stuff
 func DoNormalGcloud() {
@@ -40,8 +40,8 @@ func DoNormalGcloud() {
 
 var cfgFile string
 
-// rootCmd represents the base command when called without any subcommands
-var rootCmd = &cobra.Command{
+// RootCmd represents the base command when called without any subcommands
+var RootCmd = &cobra.Command{
 	Use:              "gcloudx",
 	TraverseChildren: true,
 	Short:            "Gcloud Xtended",
@@ -77,8 +77,8 @@ func containsOverride(args []string, currCommand *cobra.Command) bool {
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	cmdArgs := pflag.Args()
-	if containsOverride(cmdArgs, rootCmd) {
-		if err := rootCmd.Execute(); err != nil {
+	if containsOverride(cmdArgs, RootCmd) {
+		if err := RootCmd.Execute(); err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
@@ -103,11 +103,11 @@ func init() {
 	// Here you will define your flags and configuration settings.
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.cobragcloud.yaml)")
+	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.cobragcloud.yaml)")
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	RootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
 
 // initConfig reads in config file and ENV variables if set.

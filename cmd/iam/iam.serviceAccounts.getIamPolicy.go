@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cmd
+package iam
 
 import (
 	"fmt"
@@ -21,13 +21,13 @@ import (
 	"strings"
 
 	yaml "github.com/ghodss/yaml"
+	gcloudx "github.com/reechar-goog/gcloudx/cmd"
 	utils "github.com/reechar-goog/gcloudx/utilities"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	iam "google.golang.org/api/iam/v1"
-
-	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 )
 
 var saiampolicyCmd = &cobra.Command{
@@ -67,12 +67,12 @@ func doSaIam() {
 	projectPolicy := utils.GetFullyInheritedPolicy(projectID)
 	results := utils.MergePolicy(projectPolicy, utils.ConvertStructIamtoV1(serviceAccountPolicy))
 
-	if *roles != "" {
-		roleFilter := strings.Split(*roles, ",")
+	if *gcloudx.Roles != "" {
+		roleFilter := strings.Split(*gcloudx.Roles, ",")
 		results = utils.FilterPolicyByRole(results, roleFilter)
 	}
 
-	if *permission != "" {
+	if *gcloudx.Permission != "" {
 		roles := getRoles(results)
 		roleFilter := utils.FilterRolesByPermission(roles, *permission)
 		results = utils.FilterPolicyByRole(results, roleFilter)

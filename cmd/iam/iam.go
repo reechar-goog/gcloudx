@@ -12,14 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cmd
+package iam
 
 import (
+	gcloudx "github.com/reechar-goog/gcloudx/cmd"
 	"github.com/spf13/cobra"
 )
 
-var computeInstancesCmd = &cobra.Command{
-	Use:              "instances",
+var iamCmd = &cobra.Command{
+	Use:              "iam",
 	TraverseChildren: true,
 	Short:            "A brief description of your command",
 	Long: `A longer description that spans multiple lines and likely contains examples
@@ -29,10 +30,10 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		DoNormalGcloud()
+		gcloudx.DoNormalGcloud()
 	},
 }
 
 func init() {
-	computeCmd.AddCommand(computeInstancesCmd)
+	gcloudx.RootCmd.AddCommand(iamCmd)
 }

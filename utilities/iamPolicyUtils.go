@@ -139,3 +139,12 @@ func FilterPolicyByRole(policy *crmv1.Policy, roleFilter []string) *crmv1.Policy
 	filteredPolicy.Bindings = filteredBindings
 	return filteredPolicy
 }
+
+//GetRolesFromPolicy gets all roles defined in a policy
+func GetRolesFromPolicy(policy *crmv1.Policy) []string {
+	roles := make([]string, 0)
+	for _, binding := range policy.Bindings {
+		roles = append(roles, binding.Role)
+	}
+	return roles
+}
