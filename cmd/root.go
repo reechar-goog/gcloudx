@@ -16,6 +16,7 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 
@@ -32,11 +33,19 @@ var Project = pflag.String("project", "", "projectId to run command on")
 //DoNormalGcloud does normal gcloud stuff
 func DoNormalGcloud() {
 	cmd := exec.Command("gcloud", pflag.Args()...)
-	out, err := cmd.CombinedOutput()
+	// out, err := cmd.CombinedOutput()
+	out, err := cmd.StdoutPipe()
+	stderr, err := cmd.StderrPipe()
+
 	if err != nil {
 		// log.Fatalf("cmd.Run() failed with %s\n", err)
 	}
-	fmt.Printf("%s\n", string(out))
+	// fmt.Printf("%s\n", string(out))
+
+	cmd.Start()
+	defer cmd.Wait()
+	go io.Copy(os.Stdout, out)
+	go io.Copy(os.Stderr, stderr)
 }
 
 var cfgFile string
@@ -100,6 +109,7 @@ func Execute() {
 
 func init() {
 	cobra.OnInitialize(initConfig)
+	// compute.init
 	viper.BindPFlags(pflag.CommandLine)
 	// Here you will define your flags and configuration settings.
 	// Cobra supports persistent flags, which, if defined here,
@@ -109,6 +119,7 @@ func init() {
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
 	RootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+
 }
 
 // initConfig reads in config file and ENV variables if set.
