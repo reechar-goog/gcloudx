@@ -3,7 +3,9 @@ package utilities
 import (
 	"encoding/json"
 	"log"
+	"os/exec"
 
+	"github.com/ghodss/yaml"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	crmv1 "google.golang.org/api/cloudresourcemanager/v1beta1"
@@ -115,4 +117,25 @@ func StringInSlice(a string, list []string) bool {
 		}
 	}
 	return false
+}
+
+type conf struct {
+	Core struct {
+		Project string `yaml:"project"`
+	}
+}
+
+//GetProjectIDFromGcloud gets the projectId from Gcloud
+func GetProjectIDFromGcloud() string {
+	cmd := exec.Command("gcloud", "config", "list", "--format", "yaml")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Fatalf("cmd.Run() failed with %s\n", err)
+	}
+	c := conf{}
+	err = yaml.Unmarshal(out, &c)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return c.Core.Project
 }

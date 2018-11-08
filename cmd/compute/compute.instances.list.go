@@ -16,7 +16,12 @@ package compute
 
 import (
 	"fmt"
+	"log"
+	"os/exec"
+	"strconv"
+	"strings"
 
+	utils "github.com/reechar-goog/gcloudx/utilities"
 	"github.com/spf13/cobra"
 )
 
@@ -37,6 +42,40 @@ to quickly create a Cobra application.`,
 
 func doComputeList() {
 	fmt.Println("Listing computes")
+	// client, err := google.DefaultClient(oauth2.NoContext, iam.CloudPlatformScope)
+	// if err != nil {
+	// 	log.Fatalf("Couldn't create google client: %v", err)
+	// }
+
+	// computeService, err := compute.New(client)
+	// if err != nil {
+	// 	log.Fatalf("Couldn't create Compute Service: %v", err)
+	// }
+	projectID := utils.GetProjectIDFromGcloud()
+	// // zone := "my-zone"
+	// zones, err := computeService.Zones.List(projectID).Do()
+	// for _, zone := range zones.Items {
+	// 	fmt.Println(zone.Name)
+	// }
+
+	cmd := exec.Command("gcloud", "compute", "instances", "list")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Fatalf("Couldn't create google client: %v", err)
+	}
+	stringout := string(out)
+	lines := strings.Split(stringout, "\n")
+	lines[0] = lines[0] + "      CONSOLE_LINK"
+	//https://console.cloud.google.com/compute/instancesDetail/zones/us-east/instances/asd?project=reechar-dm-preempt
+	// fmt.Printf(string(out))
+	for i, line := range lines {
+		if i == 0 {
+			continue
+		}
+		lines[i] = lines[i] + "https://console.cloud.google.com/compute/instancesDetail/?project" + projectID
+		fmt.Printf(strconv.Itoa(i) + ": " + line + "\n")
+	}
+
 }
 
 func init() {

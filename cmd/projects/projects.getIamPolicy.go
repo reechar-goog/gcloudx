@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 	"log"
-	"os/exec"
 	"strings"
 
 	yaml "github.com/ghodss/yaml"
@@ -67,26 +66,10 @@ func init() {
 	projectsCmd.AddCommand(getIamPolicyCmd)
 }
 
-type conf struct {
-	Core struct {
-		Project string `yaml:"project"`
-	}
-}
-
 func getProjectID() string {
 	lastArg := pflag.Args()[len(pflag.Args())-1]
 	if lastArg != "get-iam-policy" {
 		return lastArg
 	}
-	cmd := exec.Command("gcloud", "config", "list", "--format", "yaml")
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		log.Fatalf("cmd.Run() failed with %s\n", err)
-	}
-	c := conf{}
-	err = yaml.Unmarshal(out, &c)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return c.Core.Project
+	return utils.GetProjectIDFromGcloud()
 }
